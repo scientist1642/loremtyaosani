@@ -7,7 +7,7 @@ body{
 	background: #F6F6F6;
 }
 #shota{
-	color: #424242;
+	color: #000000;
 	text-shadow: 0 1px #FFF;
 	height: 5.2em;
 	line-height: 1.3em;
@@ -15,41 +15,55 @@ body{
 	position: absolute;
 	top: 50%;
 	left: 50%;
-	margin-left: -16em;
+	margin-left: -15em;
 	margin-top: -2.6em;
+    font-weight:900;
+    font-size:120%;
+    font-style:italic;
 }
+
+ #pergament {
+       width:750px; 
+       height:900px; 
+       background-image: url('pergament01.gif');
+       margin-right:auto;
+       margin-left:auto;
+ }
+
 	</style>
 </head>
 <body>
 <div id="shota"></div>
-<script src="words.js"></script>
+<script src="wordschain.js"></script>
 <script>
 
 String.prototype.vowelCount = function () {
 	return (m = this.match(/[აეიოუ]/g)) === null ? 0 : m.length;
 };
 
-function Generator (words) {
-	this.words = words;
-	this.wordsRandomK = words.length -1;
+function Generator (wordsChain) {
+    this.wordsChain = wordsChain;
+    //this.wordsRandomK = words.length -1;
     this.vowelsPerLine = 16;
     this.vowelsShairPart = 8;
     this.linesPerStrophe = 4;
-}	
-Generator.prototype.getRandomWord = function() {
-	return this.words[Math.floor(Math.random() * this.wordsRandomK)];
-};
+    this.rhymeWords = function(){
+        var ret = [];
+        for (var word in this.wordsChain){
+            if (this.wordsChain.hasOwnProperty(word)){
+                if (this.wordsChain[word].rhymes.length){
+                    ret.push(word);
+                }
+            }
+        }
+       return ret;
+    }();
+}        
 
-Generator.prototype.generateLine = function() {
-    return this.generateShairPart().concat(this.generateShairPart());
-};
-Generator.prototype.generateStrophe = function() {
-	var strophe = []
-	for (var i = 0; i < this.linesPerStrophe; i++) {
-		strophe.push(this.generateLine());
-	};
-    return strophe;
-};
+Generator.prototype.getRand = function(mx){
+    return Math.floor(Math.random() * mx)
+}
+
 Generator.prototype.generateStropheString = function() {
 	var strophe = this.generateStrophe();
 	var t = '';
@@ -83,13 +97,31 @@ Generator.prototype.generateStropheString = function() {
 	return t;
 };
 
-Generator.prototype.generateShairPart = function() {
-	var vowelN = 0 ;
-    var words = [];
+Generator.prototype.generateLine = function(lastOfLine) {
+	var vowelN = lastOfLine.vowelCount() ;
+    var words = [lastOfLine];
     var f = 0;
-    while(vowelN < this.vowelsShairPart){
-	    var rWord = this.getRandomWord(); 
-	    if (vowelN + rWord.vowelCount() <= this.vowelsShairPart ) {
+    while(vowelN < 2 * this.vowelsShairPart){
+        // 90 % to get random previous word
+        // 10 % to get completely random one
+        
+        var gamble = Math.random() * 100;
+        var lastWord = words[words.length - 1];
+        try{
+            var candidates = this.wordsChain[lastWord].previousWords;
+        }catch(e){
+            var notFound = true;
+        }
+        var rWord = candidates[this.getRand(candidates.length)];
+        if (!rWord || gamble < 10 || notFound) {
+            // copied from SO should work
+            var randomPropertyName = function (obj) {
+                var keys = Object.keys(obj)
+                return keys[ keys.length * Math.random() << 0];
+            }; 
+            var rWord = randomPropertyName(this.wordsChain);
+        }
+	    if (vowelN + rWord.vowelCount() <= 2 * this.vowelsShairPart) {
 	        vowelN += rWord.vowelCount();
 	        words.push(rWord);
 	    }else if (++f % 11 == 10) {
@@ -97,12 +129,35 @@ Generator.prototype.generateShairPart = function() {
     	} 
     	if (f > 100) {break;}
     }
-    return words;
+    return words.reverse();
+};
+
+Generator.prototype.generateStrophe = function() {
+    var strophe = []
+    var usedRhymes = {}
+    var curRhyme = this.rhymeWords[this.getRand(this.rhymeWords.length)];
+
+
+    for (var i = 0; i < this.linesPerStrophe; i++) {
+        usedRhymes[curRhyme] = true;
+        strophe.push(this.generateLine(curRhyme));
+        if (i == this.linesPerStrophe - 1)
+            break;
+        while (true){
+            var candidates = this.wordsChain[curRhyme].rhymes;
+            curRhyme = candidates[this.getRand(candidates.length)];
+            if (!usedRhymes[curRhyme]){
+                break;
+            }
+        }
+    }
+    return strophe;
 }
 
-g = new Generator(_words);
+g = new Generator(wordsChain);
 document.getElementById('shota').innerHTML = g.generateStropheString();
 </script>
+<div id="pergament"> </div>
 </body>
 </html>
 

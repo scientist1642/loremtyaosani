@@ -50,36 +50,29 @@ def build_words_chain(text):
 
         for line in lines:
             words = map(strip_word, line.split(' '))
+            last_words.append(words[-1])
             for prword, word in izip(words, words[1:]):
-                word_vwc = vowel_count(word)
-                if word_vwc not in wordschain:
-                    wordschain[word_vwc] = []
-                for word_obj in wordschain[word_vwc]:
-                    if word_obj[u'aWord'] == word:
-                        break
-                else:
-                    word_obj = {'aWord': word, 'previousWords': [], 'rhymes':[]}
-                    wordschain[word_vwc].append(word_obj)
-                if prword not in word_obj['previousWords']:
-                    word_obj['previousWords'].append(prword)
-                if word == words[-1]:
-                    last_words.append(word_obj)
+                if word not in wordschain:
+                    wordschain[word] = {'previousWords': [], 'rhymes': []}
+                word_meta = wordschain[word]
+                if prword not in word_meta['previousWords']:
+                    word_meta['previousWords'].append(prword)
 
-        for rhyme1_obj in last_words:
-            for rhyme2_obj in last_words:
-                if not rhyme1_obj is rhyme2_obj:
-                    rhyme2_word = rhyme2_obj['aWord']
-                    if rhyme2_word not in rhyme1_obj['rhymes']:
-                        rhyme1_obj['rhymes'].append(rhyme2_word)
+        for rhyme1 in last_words:
+            for rhyme2 in last_words:
+                if not rhyme1 == rhyme2:
+                    if rhyme2 not in wordschain[rhyme1]['rhymes']:
+                        wordschain[rhyme1]['rhymes'].append(rhyme2)
 
     # this is needed because something is wrong with a text,
     # should be removed later
-    del wordschain[0]
+    del wordschain['']
 
     #print json.loads(json.dumps(wordschain,ensure_ascii=False))
-    f = open('wordschain.json', 'w')
-    f.write(json.dumps(wordschain,indent=4, 
-        ensure_ascii=False).encode('utf-8'))
+    f = open('wordschain.js', 'w')
+    js_towrite = json.dumps(wordschain, indent=4,
+        ensure_ascii=False).encode('utf-8')
+    f.write('var wordsChain = ' + js_towrite + ';')
     f.close()
 
 
